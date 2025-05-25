@@ -7,130 +7,151 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model cuadres_caja {
-  id                                           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  punto_atencion_id                            String?          @db.Uuid
-  usuario_id                                   String?          @db.Uuid
-  fecha                                        DateTime         @db.Date
-  total_entradas                               Decimal?         @default(0) @db.Decimal(20, 2)
-  total_salidas                                Decimal?         @default(0) @db.Decimal(20, 2)
-  saldo_final                                  Decimal?         @default(0) @db.Decimal(20, 2)
-  observaciones                                String?
-  aprobado_por                                 String?          @db.Uuid
-  aprobado_en                                  DateTime?        @db.Timestamp(6)
-  creado_en                                    DateTime?        @default(now()) @db.Timestamp(6)
-  usuarios_cuadres_caja_aprobado_porTousuarios usuarios?        @relation("cuadres_caja_aprobado_porTousuarios", fields: [aprobado_por], references: [id])
-  puntos_atencion                              puntos_atencion? @relation(fields: [punto_atencion_id], references: [id])
-  usuarios_cuadres_caja_usuario_idTousuarios   usuarios?        @relation("cuadres_caja_usuario_idTousuarios", fields: [usuario_id], references: [id])
-
-  @@unique([punto_atencion_id, fecha])
+model Usuario {
+  id           String         @id @default(uuid())
+  username     String         @unique
+  password     String
+  rol          RolUsuario
+  nombre       String
+  activo       Boolean        @default(true)
+  jornadas     Jornada[]
+  cambios      CambioDivisa[]
+  movimientos  Movimiento[]
+  solicitudes  SolicitudSaldo[]
 }
 
-model monedas {
-  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  codigo            String              @unique
-  nombre            String
-  es_principal      Boolean?            @default(false)
-  movimientos       movimientos[]
-  saldos            saldos[]
-  solicitudes_saldo solicitudes_saldo[]
+model PuntoAtencion {
+  id           String         @id @default(uuid())
+  nombre       String
+  direccion    String
+  ciudad       String
+  provincia    String
+  codigoPostal String
+  activo       Boolean        @default(true)
+
+  saldos       Saldo[]
+  jornadas     Jornada[]
+  cambios      CambioDivisa[]
+  movimientos  Movimiento[]
+  solicitudes  SolicitudSaldo[]
+  origenTransf Transferencia[] @relation("TransferenciasOrigen")
+  destinoTransf Transferencia[] @relation("TransferenciasDestino")
 }
 
-model movimientos {
-  id                                                       String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tipo                                                     String
-  monto                                                    Decimal          @db.Decimal(20, 2)
-  moneda_id                                                String?          @db.Uuid
-  desde_punto                                              String?          @db.Uuid
-  hacia_punto                                              String?          @db.Uuid
-  autorizado_por                                           String?          @db.Uuid
-  generado_por                                             String?          @db.Uuid
-  observacion                                              String?
-  creado_en                                                DateTime?        @default(now()) @db.Timestamp(6)
-  usuarios_movimientos_autorizado_porTousuarios            usuarios?        @relation("movimientos_autorizado_porTousuarios", fields: [autorizado_por], references: [id])
-  puntos_atencion_movimientos_desde_puntoTopuntos_atencion puntos_atencion? @relation("movimientos_desde_puntoTopuntos_atencion", fields: [desde_punto], references: [id])
-  usuarios_movimientos_generado_porTousuarios              usuarios?        @relation("movimientos_generado_porTousuarios", fields: [generado_por], references: [id])
-  puntos_atencion_movimientos_hacia_puntoTopuntos_atencion puntos_atencion? @relation("movimientos_hacia_puntoTopuntos_atencion", fields: [hacia_punto], references: [id])
-  monedas                                                  monedas?         @relation(fields: [moneda_id], references: [id])
-  recibos                                                  recibos[]
+model Moneda {
+  id       String        @id @default(uuid())
+  nombre   String
+  simbolo  String
+  codigo   String        @unique
+  saldos   Saldo[]
+  cambiosOrigen CambioDivisa[] @relation("MonedaOrigen")
+  cambiosDestino CambioDivisa[] @relation("MonedaDestino")
+  movimientos Movimiento[]
 }
 
-model puntos_atencion {
-  id                                                   String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  nombre                                               String
-  direccion                                            String
-  creado_en                                            DateTime?           @default(now()) @db.Timestamp(6)
-  cuadres_caja                                         cuadres_caja[]
-  movimientos_movimientos_desde_puntoTopuntos_atencion movimientos[]       @relation("movimientos_desde_puntoTopuntos_atencion")
-  movimientos_movimientos_hacia_puntoTopuntos_atencion movimientos[]       @relation("movimientos_hacia_puntoTopuntos_atencion")
-  saldos                                               saldos[]
-  solicitudes_saldo                                    solicitudes_saldo[]
-  usuarios                                             usuarios[]
+model CambioDivisa {
+  id                String    @id @default(uuid())
+  fecha             DateTime  @default(now())
+  montoOrigen       Float
+  montoDestino      Float
+  tasaCambio        Float
+  monedaOrigenId    String
+  monedaDestinoId   String
+  usuarioId         String
+  puntoAtencionId   String
+  recibo            Recibo?
+
+  monedaOrigen      Moneda    @relation("MonedaOrigen", fields: [monedaOrigenId], references: [id])
+  monedaDestino     Moneda    @relation("MonedaDestino", fields: [monedaDestinoId], references: [id])
+  usuario           Usuario   @relation(fields: [usuarioId], references: [id])
+  puntoAtencion     PuntoAtencion @relation(fields: [puntoAtencionId], references: [id])
 }
 
-model recibos {
-  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  movimiento_id String?      @db.Uuid
-  tipo          String
-  archivo_path  String?
-  creado_en     DateTime?    @default(now()) @db.Timestamp(6)
-  movimientos   movimientos? @relation(fields: [movimiento_id], references: [id])
+model Recibo {
+  id          String         @id @default(uuid())
+  fecha       DateTime       @default(now())
+  contenido   String
+  cambioId    String?        @unique
+
+  cambio      CambioDivisa?  @relation(fields: [cambioId], references: [id])
 }
 
-model saldos {
-  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  punto_atencion_id String?          @db.Uuid
-  moneda_id         String?          @db.Uuid
-  cantidad          Decimal?         @default(0) @db.Decimal(20, 2)
-  actualizado_en    DateTime?        @default(now()) @db.Timestamp(6)
-  monedas           monedas?         @relation(fields: [moneda_id], references: [id])
-  puntos_atencion   puntos_atencion? @relation(fields: [punto_atencion_id], references: [id])
+model Saldo {
+  id              String        @id @default(uuid())
+  puntoAtencionId String
+  monedaId        String
+  cantidad        Float         @default(0)
 
-  @@unique([punto_atencion_id, moneda_id])
+  puntoAtencion   PuntoAtencion @relation(fields: [puntoAtencionId], references: [id])
+  moneda          Moneda        @relation(fields: [monedaId], references: [id])
 }
 
-model solicitudes_saldo {
-  id                                                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  usuario_id                                        String?          @db.Uuid
-  punto_atencion_id                                 String?          @db.Uuid
-  moneda_id                                         String?          @db.Uuid
-  monto                                             Decimal          @db.Decimal(20, 2)
-  estado                                            String?          @default("PENDIENTE")
-  observacion                                       String?
-  creado_en                                         DateTime?        @default(now()) @db.Timestamp(6)
-  aprobado_por                                      String?          @db.Uuid
-  aprobado_en                                       DateTime?        @db.Timestamp(6)
-  usuarios_solicitudes_saldo_aprobado_porTousuarios usuarios?        @relation("solicitudes_saldo_aprobado_porTousuarios", fields: [aprobado_por], references: [id])
-  monedas                                           monedas?         @relation(fields: [moneda_id], references: [id])
-  puntos_atencion                                   puntos_atencion? @relation(fields: [punto_atencion_id], references: [id])
-  usuarios_solicitudes_saldo_usuario_idTousuarios   usuarios?        @relation("solicitudes_saldo_usuario_idTousuarios", fields: [usuario_id], references: [id])
+model Movimiento {
+  id              String        @id @default(uuid())
+  tipo            TipoMovimiento
+  monto           Float
+  monedaId        String
+  usuarioId       String
+  puntoAtencionId String
+  fecha           DateTime      @default(now())
+  descripcion     String?
+
+  moneda          Moneda        @relation(fields: [monedaId], references: [id])
+  usuario         Usuario       @relation(fields: [usuarioId], references: [id])
+  puntoAtencion   PuntoAtencion @relation(fields: [puntoAtencionId], references: [id])
 }
 
-model usuarios {
-  id                                                         String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  nombre                                                     String
-  usuario                                                    String              @unique
-  correo                                                     String              @unique
-  clave                                                      String
-  rol                                                        String
-  punto_atencion_id                                          String?             @db.Uuid
-  creado_en                                                  DateTime?           @default(now()) @db.Timestamp(6)
-  cuadres_caja_cuadres_caja_aprobado_porTousuarios           cuadres_caja[]      @relation("cuadres_caja_aprobado_porTousuarios")
-  cuadres_caja_cuadres_caja_usuario_idTousuarios             cuadres_caja[]      @relation("cuadres_caja_usuario_idTousuarios")
-  movimientos_movimientos_autorizado_porTousuarios           movimientos[]       @relation("movimientos_autorizado_porTousuarios")
-  movimientos_movimientos_generado_porTousuarios             movimientos[]       @relation("movimientos_generado_porTousuarios")
-  solicitudes_saldo_solicitudes_saldo_aprobado_porTousuarios solicitudes_saldo[] @relation("solicitudes_saldo_aprobado_porTousuarios")
-  solicitudes_saldo_solicitudes_saldo_usuario_idTousuarios   solicitudes_saldo[] @relation("solicitudes_saldo_usuario_idTousuarios")
-  puntos_atencion                                            puntos_atencion?    @relation(fields: [punto_atencion_id], references: [id])
+model SolicitudSaldo {
+  id              String        @id @default(uuid())
+  puntoAtencionId String
+  usuarioId       String
+  monedaId        String
+  montoSolicitado Float
+  aprobado        Boolean       @default(false)
+  fechaSolicitud  DateTime      @default(now())
+  fechaRespuesta  DateTime?
+
+  puntoAtencion   PuntoAtencion @relation(fields: [puntoAtencionId], references: [id])
+  usuario         Usuario       @relation(fields: [usuarioId], references: [id])
+  moneda          Moneda        @relation(fields: [monedaId], references: [id])
 }
 
-model jornadas {
-  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  usuario_id           String   @db.Uuid
-  punto_atencion_id    String   @db.Uuid
-  fecha                DateTime @default(now())
-  hora_inicio          DateTime?
-  hora_salida_almuerzo DateTime?
-  hora_regreso_almuerzo DateTime?
-  hora_fin             DateTime?
+model Jornada {
+  id              String        @id @default(uuid())
+  usuarioId       String
+  puntoAtencionId String
+  fechaInicio     DateTime      @default(now())
+  fechaAlmuerzo   DateTime?
+  fechaRegreso    DateTime?
+  fechaSalida     DateTime?
+
+  usuario         Usuario       @relation(fields: [usuarioId], references: [id])
+  puntoAtencion   PuntoAtencion @relation(fields: [puntoAtencionId], references: [id])
+}
+
+model Transferencia {
+  id                  String        @id @default(uuid())
+  origenId            String
+  destinoId           String
+  monedaId            String
+  monto               Float
+  fecha               DateTime      @default(now())
+  descripcion         String?
+
+  origen              PuntoAtencion @relation("TransferenciasOrigen", fields: [origenId], references: [id])
+  destino             PuntoAtencion @relation("TransferenciasDestino", fields: [destinoId], references: [id])
+  moneda              Moneda        @relation(fields: [monedaId], references: [id])
+}
+
+enum RolUsuario {
+  ADMIN
+  OPERADOR
+}
+
+enum TipoMovimiento {
+  INGRESO
+  EGRESO
+  TRANSFERENCIA_ENTRANTE
+  TRANSFERENCIA_SALIENTE
+  CAMBIO_DIVISA
 }

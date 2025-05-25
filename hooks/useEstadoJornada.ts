@@ -1,4 +1,3 @@
-// hooks/useEstadoJornada.ts
 import { useEffect, useState } from 'react'
 
 export function useEstadoJornada() {
@@ -32,8 +31,12 @@ export function useEstadoJornada() {
       if (!res.ok) throw new Error(data.error)
       setMensaje(data.mensaje)
       await fetchEstado()
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message)
+      } else {
+        setError('Ocurrió un error inesperado')
+      }
     } finally {
       setLoading(false)
     }

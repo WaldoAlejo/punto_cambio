@@ -1,4 +1,3 @@
-// components/LogoutButton.tsx
 'use client'
 import { useRouter } from 'next/router'
 
@@ -9,13 +8,16 @@ export default function LogoutButton() {
     try {
       await fetch('/api/logout')
       router.push('/login')
-    } catch (error) {
+    } catch {
       alert('Error al cerrar sesión')
     }
   }
 
   return (
-    <button onClick={cerrarSesion} style={{ background: 'red', color: 'white', padding: '8px 16px', borderRadius: 4 }}>
+    <button
+      onClick={cerrarSesion}
+      style={{ background: 'red', color: 'white', padding: '8px 16px', borderRadius: 4 }}
+    >
       Cerrar sesión
     </button>
   )

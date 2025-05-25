@@ -30,8 +30,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
 
     return res.status(201).json({ mensaje: 'Usuario creado', usuario: nuevoUsuario })
-  } catch (err: any) {
-    console.error(err)
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      console.error(err.message)
+    } else {
+      console.error('Error desconocido')
+    }
     return res.status(500).json({ error: 'Error al crear usuario' })
   }
 }

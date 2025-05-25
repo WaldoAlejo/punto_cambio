@@ -4,6 +4,7 @@ import { obtenerUsuarioDesdeContext } from '@/lib/auth'
 import LogoutButton from '@/components/LogoutButton'
 import Link from 'next/link'
 import { useEstadoJornada } from '@/hooks/useEstadoJornada'
+import { useCuadreCajaHoy } from '@/hooks/useCuadreCajaHoy'
 
 type Saldo = {
   moneda: string
@@ -21,6 +22,7 @@ type Props = {
 
 export default function DashboardPage({ usuario, saldos }: Props) {
   const { estado, registrar, mensaje, error, loading } = useEstadoJornada()
+  const { cuadre, loading: cargandoCuadre } = useCuadreCajaHoy()
 
   const siguienteAccion = () => {
     if (!estado.inicio) return 'inicio'
@@ -69,16 +71,81 @@ export default function DashboardPage({ usuario, saldos }: Props) {
         <p><strong>Fin jornada:</strong> {estado.fin || '—'}</p>
 
         {accion ? (
-          <button onClick={() => registrar(accion)} disabled={loading} style={{ marginTop: 16 }}>
+          <button
+            onClick={() => registrar(accion)}
+            disabled={loading || (accion === 'fin' && !cuadre)}
+            style={{ marginTop: 16 }}
+          >
             Registrar {accion.replace('-', ' ')}
           </button>
         ) : (
           <p style={{ marginTop: 16 }}>✅ Jornada completada</p>
         )}
 
+        {accion === 'fin' && !cuadre && (
+          <p style={{ color: 'red', marginTop: 8 }}>
+            ⚠️ Debes realizar el cuadre de caja antes de finalizar la jornada.
+          </p>
+        )}
+
         {mensaje && <p style={{ color: 'green' }}>{mensaje}</p>}
         {error && <p style={{ color: 'red' }}>{error}</p>}
       </div>
+
+      {/* Sección de cuadre de caja */}
+      <div style={{ marginTop: 50 }}>
+        <h2>📊 Cuadre de Caja Diario</h2>
+        {cargandoCuadre ? (
+          <p>Cargando cuadre...</p>
+        ) : cuadre ? (
+          <div>
+            <p><strong>Entradas:</strong> {cuadre.entradas.toFixed(2)}</p>
+            <p><strong>Salidas:</strong> {cuadre.salidas.toFixed(2)}</p>
+            <p><strong>Saldo final:</strong> {cuadre.saldo.toFixed(2)}</p>
+            {cuadre.observaciones && <p><strong>Obs:</strong> {cuadre.observaciones}</p>}
+            <p style={{ color: 'green', marginTop: 8 }}>✅ Cuadre de caja registrado</p>
+          </div>
+        ) : (
+          <p style={{ color: 'red' }}>⚠️ Aún no has realizado el cuadre de caja hoy</p>
+        )}
+      </div>
     </div>
   )
+}
+
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const usuario = obtenerUsuarioDesdeContext(ctx)
+
+  if (!usuario || !usuario.punto_atencion_id) {
+    return {
+      redirect: {
+        destination: '/login',
+        permanent: false,
+      },
+    }
+  }
+
+  const saldosDb = await prisma.saldos.findMany({
+    where: {
+      punto_atencion_id: usuario.punto_atencion_id,
+      cantidad: { gt: 0 },
+    },
+    include: {
+      monedas: true,
+    },
+  })
+
+  type SaldosWithMoneda = typeof saldosDb[number]
+
+  const saldos: Saldo[] = saldosDb.map((s: SaldosWithMoneda) => ({
+    moneda: s.monedas?.codigo || '---',
+    cantidad: parseFloat(s.cantidad?.toString() || '0'),
+  }))
+
+  return {
+    props: {
+      usuario,
+      saldos,
+    },
+  }
 }

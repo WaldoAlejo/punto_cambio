@@ -1,3 +1,4 @@
+// ✅ pages/api/nuevo-cambio.ts
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { prisma } from '@/lib/prisma'
 import { obtenerUsuarioDesdeRequest } from '@/lib/auth'
@@ -21,13 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     observacion,
   } = req.body
 
-  if (
-    !tipoOperacion ||
-    !monedaOrigen ||
-    !monedaDestino ||
-    !montoOrigen ||
-    !tasaCambio
-  ) {
+  if (!tipoOperacion || !monedaOrigen || !monedaDestino || !montoOrigen || !tasaCambio) {
     return res.status(400).json({ error: 'Faltan campos obligatorios' })
   }
 
@@ -42,12 +37,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'La moneda origen y destino no pueden ser iguales' })
   }
 
-  const montoDestino = tipoOperacion === 'COMPRA'
-    ? monto * tasa
-    : monto / tasa
+  const montoDestino = tipoOperacion === 'COMPRA' ? monto * tasa : monto / tasa
 
   try {
-    const cambio = await prisma.cambiosDivisas.create({
+    const cambio = await prisma.cambios_divisas.create({
       data: {
         punto_atencion_id: usuario.punto_atencion_id,
         usuario_id: usuario.userId,

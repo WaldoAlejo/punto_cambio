@@ -23,7 +23,7 @@ export function protegerRuta(ctx: GetServerSidePropsContext) {
         usuario,
       },
     }
-  } catch (error) {
+  } catch {
     return {
       redirect: {
         destination: '/login',

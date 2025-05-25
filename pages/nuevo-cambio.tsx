@@ -19,7 +19,7 @@ type Props = {
   monedas: Moneda[]
 }
 
-export default function NuevoCambio({ usuario, monedas }: Props) {
+export default function NuevoCambio({ usuario: _usuario, monedas }: Props) {
   const router = useRouter()
 
   const [tipo, setTipo] = useState<'COMPRA' | 'VENTA'>('COMPRA')
@@ -94,7 +94,13 @@ export default function NuevoCambio({ usuario, monedas }: Props) {
       <form onSubmit={(e) => e.preventDefault()}>
         <label>
           Tipo de operación:
-          <select value={tipo} onChange={(e) => { setTipo(e.target.value as 'COMPRA' | 'VENTA'); setMostrarVistaPrevia(false) }}>
+          <select
+            value={tipo}
+            onChange={(e) => {
+              setTipo(e.target.value as 'COMPRA' | 'VENTA')
+              setMostrarVistaPrevia(false)
+            }}
+          >
             <option value="COMPRA">COMPRA</option>
             <option value="VENTA">VENTA</option>
           </select>
@@ -103,7 +109,14 @@ export default function NuevoCambio({ usuario, monedas }: Props) {
 
         <label>
           Moneda Origen:
-          <select value={monedaOrigen} onChange={(e) => { setMonedaOrigen(e.target.value); setMostrarVistaPrevia(false) }} required>
+          <select
+            value={monedaOrigen}
+            onChange={(e) => {
+              setMonedaOrigen(e.target.value)
+              setMostrarVistaPrevia(false)
+            }}
+            required
+          >
             <option value="">Seleccione</option>
             {monedas.map((m: Moneda) => (
               <option key={m.id} value={m.id}>
@@ -116,7 +129,14 @@ export default function NuevoCambio({ usuario, monedas }: Props) {
 
         <label>
           Moneda Destino:
-          <select value={monedaDestino} onChange={(e) => { setMonedaDestino(e.target.value); setMostrarVistaPrevia(false) }} required>
+          <select
+            value={monedaDestino}
+            onChange={(e) => {
+              setMonedaDestino(e.target.value)
+              setMostrarVistaPrevia(false)
+            }}
+            required
+          >
             <option value="">Seleccione</option>
             {monedas.map((m: Moneda) => (
               <option key={m.id} value={m.id} disabled={m.id === monedaOrigen}>
@@ -132,7 +152,10 @@ export default function NuevoCambio({ usuario, monedas }: Props) {
           <input
             type="text"
             value={montoOrigen}
-            onChange={(e) => { setMontoOrigen(e.target.value); setMostrarVistaPrevia(false) }}
+            onChange={(e) => {
+              setMontoOrigen(e.target.value)
+              setMostrarVistaPrevia(false)
+            }}
             required
           />
         </label>
@@ -143,7 +166,10 @@ export default function NuevoCambio({ usuario, monedas }: Props) {
           <input
             type="text"
             value={tasaCambio}
-            onChange={(e) => { setTasaCambio(e.target.value); setMostrarVistaPrevia(false) }}
+            onChange={(e) => {
+              setTasaCambio(e.target.value)
+              setMostrarVistaPrevia(false)
+            }}
             required
           />
         </label>
@@ -168,18 +194,35 @@ export default function NuevoCambio({ usuario, monedas }: Props) {
         <>
           <hr style={{ margin: '2rem 0' }} />
           <h2>Vista previa del cambio</h2>
-          <p><strong>Tipo:</strong> {tipo}</p>
-          <p><strong>Moneda origen:</strong> {getMonedaTexto(monedaOrigen)}</p>
-          <p><strong>Moneda destino:</strong> {getMonedaTexto(monedaDestino)}</p>
-          <p><strong>Monto entregado:</strong> {normalizarDecimal(montoOrigen)}</p>
-          <p><strong>Tasa negociada:</strong> {normalizarDecimal(tasaCambio)}</p>
-          <p><strong>Monto destino:</strong> 💰 {montoDestino}</p>
-          {observacion && <p><strong>Observación:</strong> {observacion}</p>}
+          <p>
+            <strong>Tipo:</strong> {tipo}
+          </p>
+          <p>
+            <strong>Moneda origen:</strong> {getMonedaTexto(monedaOrigen)}
+          </p>
+          <p>
+            <strong>Moneda destino:</strong> {getMonedaTexto(monedaDestino)}
+          </p>
+          <p>
+            <strong>Monto entregado:</strong> {normalizarDecimal(montoOrigen)}
+          </p>
+          <p>
+            <strong>Tasa negociada:</strong> {normalizarDecimal(tasaCambio)}
+          </p>
+          <p>
+            <strong>Monto destino:</strong> 💰 {montoDestino}
+          </p>
+          {observacion && (
+            <p>
+              <strong>Observación:</strong> {observacion}
+            </p>
+          )}
           <br />
-          <button onClick={registrarCambio}>
-            Confirmar y Registrar Cambio
-          </button>
-          <button style={{ marginLeft: 10 }} onClick={() => setMostrarVistaPrevia(false)}>
+          <button onClick={registrarCambio}>Confirmar y Registrar Cambio</button>
+          <button
+            style={{ marginLeft: 10 }}
+            onClick={() => setMostrarVistaPrevia(false)}
+          >
             🗑️ Editar
           </button>
         </>
@@ -217,4 +260,4 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       })),
     },
   }
-} 
+}

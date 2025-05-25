@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/router'
+
+type PuntoAtencion = {
+  id: string
+  nombre: string
+}
 
 export default function CrearUsuarioPage() {
-  const router = useRouter()
   const [nombre, setNombre] = useState('')
   const [usuario, setUsuario] = useState('')
   const [correo, setCorreo] = useState('')
   const [clave, setClave] = useState('')
   const [rol, setRol] = useState('EMPLEADO')
   const [puntoAtencion, setPuntoAtencion] = useState('')
-  const [puntos, setPuntos] = useState([])
+  const [puntos, setPuntos] = useState<PuntoAtencion[]>([])
   const [mensaje, setMensaje] = useState('')
   const [error, setError] = useState('')
 
@@ -74,7 +77,7 @@ export default function CrearUsuarioPage() {
         <label>Punto de atención (opcional):</label>
         <select value={puntoAtencion} onChange={(e) => setPuntoAtencion(e.target.value)}>
           <option value="">-- Ninguno --</option>
-          {puntos.map((p: any) => (
+          {puntos.map((p) => (
             <option key={p.id} value={p.id}>{p.nombre}</option>
           ))}
         </select>

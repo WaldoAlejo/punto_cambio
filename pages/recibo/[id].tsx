@@ -1,3 +1,5 @@
+
+// ✅ pages/recibo/[id].tsx
 import { GetServerSideProps } from 'next'
 import { prisma } from '@/lib/prisma'
 import { formatWithOptions } from 'date-fns/fp'
