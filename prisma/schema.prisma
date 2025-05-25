@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model cuadres_caja {
+  id                                           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  punto_atencion_id                            String?          @db.Uuid
+  usuario_id                                   String?          @db.Uuid
+  fecha                                        DateTime         @db.Date
+  total_entradas                               Decimal?         @default(0) @db.Decimal(20, 2)
+  total_salidas                                Decimal?         @default(0) @db.Decimal(20, 2)
+  saldo_final                                  Decimal?         @default(0) @db.Decimal(20, 2)
+  observaciones                                String?
+  aprobado_por                                 String?          @db.Uuid
+  aprobado_en                                  DateTime?        @db.Timestamp(6)
+  creado_en                                    DateTime?        @default(now()) @db.Timestamp(6)
+  usuarios_cuadres_caja_aprobado_porTousuarios usuarios?        @relation("cuadres_caja_aprobado_porTousuarios", fields: [aprobado_por], references: [id])
+  puntos_atencion                              puntos_atencion? @relation(fields: [punto_atencion_id], references: [id])
+  usuarios_cuadres_caja_usuario_idTousuarios   usuarios?        @relation("cuadres_caja_usuario_idTousuarios", fields: [usuario_id], references: [id])
+
+  @@unique([punto_atencion_id, fecha])
+}
+
+model monedas {
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigo            String              @unique
+  nombre            String
+  es_principal      Boolean?            @default(false)
+  movimientos       movimientos[]
+  saldos            saldos[]
+  solicitudes_saldo solicitudes_saldo[]
+}
+
+model movimientos {
+  id                                                       String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tipo                                                     String
+  monto                                                    Decimal          @db.Decimal(20, 2)
+  moneda_id                                                String?          @db.Uuid
+  desde_punto                                              String?          @db.Uuid
+  hacia_punto                                              String?          @db.Uuid
+  autorizado_por                                           String?          @db.Uuid
+  generado_por                                             String?          @db.Uuid
+  observacion                                              String?
+  creado_en                                                DateTime?        @default(now()) @db.Timestamp(6)
+  usuarios_movimientos_autorizado_porTousuarios            usuarios?        @relation("movimientos_autorizado_porTousuarios", fields: [autorizado_por], references: [id])
+  puntos_atencion_movimientos_desde_puntoTopuntos_atencion puntos_atencion? @relation("movimientos_desde_puntoTopuntos_atencion", fields: [desde_punto], references: [id])
+  usuarios_movimientos_generado_porTousuarios              usuarios?        @relation("movimientos_generado_porTousuarios", fields: [generado_por], references: [id])
+  puntos_atencion_movimientos_hacia_puntoTopuntos_atencion puntos_atencion? @relation("movimientos_hacia_puntoTopuntos_atencion", fields: [hacia_punto], references: [id])
+  monedas                                                  monedas?         @relation(fields: [moneda_id], references: [id])
+  recibos                                                  recibos[]
+}
+
+model puntos_atencion {
+  id                                                   String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre                                               String
+  direccion                                            String
+  creado_en                                            DateTime?           @default(now()) @db.Timestamp(6)
+  cuadres_caja                                         cuadres_caja[]
+  movimientos_movimientos_desde_puntoTopuntos_atencion movimientos[]       @relation("movimientos_desde_puntoTopuntos_atencion")
+  movimientos_movimientos_hacia_puntoTopuntos_atencion movimientos[]       @relation("movimientos_hacia_puntoTopuntos_atencion")
+  saldos                                               saldos[]
+  solicitudes_saldo                                    solicitudes_saldo[]
+  usuarios                                             usuarios[]
+}
+
+model recibos {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  movimiento_id String?      @db.Uuid
+  tipo          String
+  archivo_path  String?
+  creado_en     DateTime?    @default(now()) @db.Timestamp(6)
+  movimientos   movimientos? @relation(fields: [movimiento_id], references: [id])
+}
+
+model saldos {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  punto_atencion_id String?          @db.Uuid
+  moneda_id         String?          @db.Uuid
+  cantidad          Decimal?         @default(0) @db.Decimal(20, 2)
+  actualizado_en    DateTime?        @default(now()) @db.Timestamp(6)
+  monedas           monedas?         @relation(fields: [moneda_id], references: [id])
+  puntos_atencion   puntos_atencion? @relation(fields: [punto_atencion_id], references: [id])
+
+  @@unique([punto_atencion_id, moneda_id])
+}
+
+model solicitudes_saldo {
+  id                                                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id                                        String?          @db.Uuid
+  punto_atencion_id                                 String?          @db.Uuid
+  moneda_id                                         String?          @db.Uuid
+  monto                                             Decimal          @db.Decimal(20, 2)
+  estado                                            String?          @default("PENDIENTE")
+  observacion                                       String?
+  creado_en                                         DateTime?        @default(now()) @db.Timestamp(6)
+  aprobado_por                                      String?          @db.Uuid
+  aprobado_en                                       DateTime?        @db.Timestamp(6)
+  usuarios_solicitudes_saldo_aprobado_porTousuarios usuarios?        @relation("solicitudes_saldo_aprobado_porTousuarios", fields: [aprobado_por], references: [id])
+  monedas                                           monedas?         @relation(fields: [moneda_id], references: [id])
+  puntos_atencion                                   puntos_atencion? @relation(fields: [punto_atencion_id], references: [id])
+  usuarios_solicitudes_saldo_usuario_idTousuarios   usuarios?        @relation("solicitudes_saldo_usuario_idTousuarios", fields: [usuario_id], references: [id])
+}
+
+model usuarios {
+  id                                                         String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre                                                     String
+  usuario                                                    String              @unique
+  correo                                                     String              @unique
+  clave                                                      String
+  rol                                                        String
+  punto_atencion_id                                          String?             @db.Uuid
+  creado_en                                                  DateTime?           @default(now()) @db.Timestamp(6)
+  cuadres_caja_cuadres_caja_aprobado_porTousuarios           cuadres_caja[]      @relation("cuadres_caja_aprobado_porTousuarios")
+  cuadres_caja_cuadres_caja_usuario_idTousuarios             cuadres_caja[]      @relation("cuadres_caja_usuario_idTousuarios")
+  movimientos_movimientos_autorizado_porTousuarios           movimientos[]       @relation("movimientos_autorizado_porTousuarios")
+  movimientos_movimientos_generado_porTousuarios             movimientos[]       @relation("movimientos_generado_porTousuarios")
+  solicitudes_saldo_solicitudes_saldo_aprobado_porTousuarios solicitudes_saldo[] @relation("solicitudes_saldo_aprobado_porTousuarios")
+  solicitudes_saldo_solicitudes_saldo_usuario_idTousuarios   solicitudes_saldo[] @relation("solicitudes_saldo_usuario_idTousuarios")
+  puntos_atencion                                            puntos_atencion?    @relation(fields: [punto_atencion_id], references: [id])
+}
