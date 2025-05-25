@@ -123,3 +123,14 @@ model usuarios {
   solicitudes_saldo_solicitudes_saldo_usuario_idTousuarios   solicitudes_saldo[] @relation("solicitudes_saldo_usuario_idTousuarios")
   puntos_atencion                                            puntos_atencion?    @relation(fields: [punto_atencion_id], references: [id])
 }
+
+model jornadas {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id           String   @db.Uuid
+  punto_atencion_id    String   @db.Uuid
+  fecha                DateTime @default(now())
+  hora_inicio          DateTime?
+  hora_salida_almuerzo DateTime?
+  hora_regreso_almuerzo DateTime?
+  hora_fin             DateTime?
+}

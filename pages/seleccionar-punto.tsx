@@ -54,7 +54,19 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
     return { redirect: { destination: '/dashboard', permanent: false } }
   }
 
+  const puntosOcupados = await prisma.usuarios.findMany({
+    where: { punto_atencion_id: { not: null } },
+    select: { punto_atencion_id: true },
+  })
+
   const puntos = await prisma.puntos_atencion.findMany({
+    where: {
+      id: {
+        notIn: puntosOcupados
+          .map((p: { punto_atencion_id: string | null }) => p.punto_atencion_id!)
+          .filter(Boolean),
+      },
+    },
     select: { id: true, nombre: true },
   })
 

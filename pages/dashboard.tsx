@@ -1,9 +1,9 @@
-// pages/dashboard.tsx
 import { GetServerSideProps } from 'next'
 import { prisma } from '@/lib/prisma'
 import { obtenerUsuarioDesdeContext } from '@/lib/auth'
 import LogoutButton from '@/components/LogoutButton'
 import Link from 'next/link'
+import { useEstadoJornada } from '@/hooks/useEstadoJornada'
 
 type Saldo = {
   moneda: string
@@ -20,6 +20,18 @@ type Props = {
 }
 
 export default function DashboardPage({ usuario, saldos }: Props) {
+  const { estado, registrar, mensaje, error, loading } = useEstadoJornada()
+
+  const siguienteAccion = () => {
+    if (!estado.inicio) return 'inicio'
+    if (!estado.salida_almuerzo) return 'salida-almuerzo'
+    if (!estado.regreso_almuerzo) return 'regreso-almuerzo'
+    if (!estado.fin) return 'fin'
+    return null
+  }
+
+  const accion = siguienteAccion()
+
   return (
     <div style={{ padding: 40 }}>
       <LogoutButton />
@@ -47,43 +59,26 @@ export default function DashboardPage({ usuario, saldos }: Props) {
           </button>
         </Link>
       </div>
+
+      {/* Sección de control de jornada */}
+      <div style={{ marginTop: 60 }}>
+        <h2>🕒 Control de Jornada</h2>
+        <p><strong>Inicio:</strong> {estado.inicio || '—'}</p>
+        <p><strong>Salida almuerzo:</strong> {estado.salida_almuerzo || '—'}</p>
+        <p><strong>Regreso almuerzo:</strong> {estado.regreso_almuerzo || '—'}</p>
+        <p><strong>Fin jornada:</strong> {estado.fin || '—'}</p>
+
+        {accion ? (
+          <button onClick={() => registrar(accion)} disabled={loading} style={{ marginTop: 16 }}>
+            Registrar {accion.replace('-', ' ')}
+          </button>
+        ) : (
+          <p style={{ marginTop: 16 }}>✅ Jornada completada</p>
+        )}
+
+        {mensaje && <p style={{ color: 'green' }}>{mensaje}</p>}
+        {error && <p style={{ color: 'red' }}>{error}</p>}
+      </div>
     </div>
   )
-}
-
-export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  const usuario = obtenerUsuarioDesdeContext(ctx)
-
-  if (!usuario || !usuario.punto_atencion_id) {
-    return {
-      redirect: {
-        destination: '/login',
-        permanent: false,
-      },
-    }
-  }
-
-  const saldosDb = await prisma.saldos.findMany({
-    where: {
-      punto_atencion_id: usuario.punto_atencion_id,
-      cantidad: { gt: 0 },
-    },
-    include: {
-      monedas: true,
-    },
-  })
-
-  type SaldosWithMoneda = typeof saldosDb[number]
-
-  const saldos: Saldo[] = saldosDb.map((s: SaldosWithMoneda) => ({
-    moneda: s.monedas?.codigo || '---',
-    cantidad: parseFloat(s.cantidad?.toString() || '0'),
-  }))
-
-  return {
-    props: {
-      usuario,
-      saldos,
-    },
-  }
 }

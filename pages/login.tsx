@@ -1,10 +1,9 @@
-// pages/login.tsx
 import { useState } from 'react'
 import { useRouter } from 'next/router'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [correo, setCorreo] = useState('')
+  const [usuario, setUsuario] = useState('')
   const [clave, setClave] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -20,7 +19,7 @@ export default function LoginPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ correo, clave }),
+        body: JSON.stringify({ usuario, clave }),
       })
 
       const data = await res.json()
@@ -29,14 +28,14 @@ export default function LoginPage() {
         setError(data.error || 'Error desconocido')
       } else {
         // redirigir al home o dashboard
-       const perfil = await fetch('/api/perfil')
-const dataPerfil = await perfil.json()
+        const perfil = await fetch('/api/perfil')
+        const dataPerfil = await perfil.json()
 
-if (!dataPerfil.usuario?.punto_atencion_id) {
-  router.push('/seleccionar-punto')
-} else {
-  router.push('/dashboard')
-}
+        if (!dataPerfil.usuario?.punto_atencion_id) {
+          router.push('/seleccionar-punto')
+        } else {
+          router.push('/dashboard')
+        }
       }
     } catch (err) {
       setError('Error de red o del servidor')
@@ -50,11 +49,11 @@ if (!dataPerfil.usuario?.punto_atencion_id) {
       <h1>Iniciar Sesión</h1>
       <form onSubmit={handleLogin}>
         <label>
-          Correo:
+          Usuario:
           <input
-            type="email"
-            value={correo}
-            onChange={(e) => setCorreo(e.target.value)}
+            type="text"
+            value={usuario}
+            onChange={(e) => setUsuario(e.target.value)}
             required
           />
         </label>
