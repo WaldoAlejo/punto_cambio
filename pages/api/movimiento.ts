@@ -1,54 +1,48 @@
+// pages/api/movimiento/registrar.ts
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { obtenerUsuarioDesdeRequest } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { parse } from 'cookie'
+import jwt from 'jsonwebtoken'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' })
 
-  const usuario = obtenerUsuarioDesdeRequest(req)
-  if (!usuario) return res.status(401).json({ error: 'No autenticado' })
-
-  const { tipo, monto, moneda, observacion } = req.body
-
-  if (!tipo || !monto || !moneda) {
-    return res.status(400).json({ error: 'Faltan campos obligatorios' })
-  }
+  const token = req.headers.cookie ? parse(req.headers.cookie).token : null
+  if (!token) return res.status(401).json({ error: 'No autenticado' })
 
   try {
-    // Buscar moneda por código
-    const monedaDb = await prisma.monedas.findUnique({
-      where: { codigo: moneda },
-    })
-
-    if (!monedaDb) {
-      return res.status(404).json({ error: 'Moneda no encontrada' })
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+      id: string
+      punto_atencion_id: string
     }
 
-    // Insertar movimiento
-    const movimiento = await prisma.movimientos.create({
+    const { tipo, monto, monedaId, descripcion } = req.body
+
+    if (!tipo || !monto || !monedaId) {
+      return res.status(400).json({ error: 'Faltan campos obligatorios' })
+    }
+
+    // Validar tipo de movimiento
+    const tiposValidos = ['INGRESO', 'EGRESO', 'TRANSFERENCIA_ENTRANTE', 'TRANSFERENCIA_SALIENTE']
+    if (!tiposValidos.includes(tipo)) {
+      return res.status(400).json({ error: 'Tipo de movimiento inválido' })
+    }
+
+    // Crear el movimiento
+    await prisma.movimiento.create({
       data: {
         tipo,
         monto: parseFloat(monto),
-        moneda_id: monedaDb.id,
-        desde_punto: tipo === 'VENTA' ? usuario.punto_atencion_id : null,
-        hacia_punto: tipo === 'COMPRA' ? usuario.punto_atencion_id : null,
-        generado_por: usuario.userId,
-        observacion,
+        monedaId,
+        usuarioId: decoded.id,
+        puntoAtencionId: decoded.punto_atencion_id,
+        descripcion: descripcion || '',
       },
     })
 
-    // Insertar recibo vinculado (tipo = "MOVIMIENTO")
-    await prisma.recibos.create({
-      data: {
-        tipo: 'MOVIMIENTO',
-        movimiento_id: movimiento.id,
-        archivo_path: null, // puedes actualizar luego con el path real
-      },
-    })
-
-    return res.status(200).json({ mensaje: 'Movimiento y recibo registrados' })
-  } catch (error) {
-    console.error('Error al registrar movimiento:', error)
+    return res.status(200).json({ mensaje: 'Movimiento registrado correctamente' })
+  } catch (err) {
+    console.error('Error al registrar movimiento:', err)
     return res.status(500).json({ error: 'Error interno del servidor' })
   }
 }

@@ -1,5 +1,4 @@
-
-// ✅ pages/recibo/[id].tsx
+// pages/recibo/[id].tsx
 import { GetServerSideProps } from 'next'
 import { prisma } from '@/lib/prisma'
 import { formatWithOptions } from 'date-fns/fp'
@@ -94,13 +93,13 @@ export default function ReciboPage({ cambio }: Props) {
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
   const { id } = ctx.query
 
-  const cambio = await prisma.cambios_divisas.findUnique({
+  const cambio = await prisma.cambioDivisa.findUnique({
     where: { id: String(id) },
     include: {
-      monedas_origen: true,
-      monedas_destino: true,
-      puntos_atencion: true,
-      usuarios: true,
+      monedaOrigen: true,
+      monedaDestino: true,
+      puntoAtencion: true,
+      usuario: true,
     },
   })
 
@@ -109,21 +108,21 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
   }
 
   const formatFecha = formatWithOptions({ locale: es }, 'dd/MM/yyyy HH:mm')
-  const fecha = formatFecha(new Date(cambio.creado_en))
+  const fecha = formatFecha(new Date(cambio.fecha))
 
   return {
     props: {
       cambio: {
         id: cambio.id,
-        tipo_operacion: cambio.tipo_operacion,
+        tipo_operacion: cambio.tipoOperacion,
         creado_en: fecha,
-        punto: cambio.puntos_atencion?.nombre || '---',
-        usuario: cambio.usuarios?.nombre || '---',
-        moneda_origen: cambio.monedas_origen?.codigo || '---',
-        moneda_destino: cambio.monedas_destino?.codigo || '---',
-        monto_origen: Number(cambio.monto_origen).toFixed(2),
-        tasa: Number(cambio.tasa_cambio).toFixed(4),
-        monto_destino: Number(cambio.monto_destino).toFixed(2),
+        punto: cambio.puntoAtencion?.nombre || '---',
+        usuario: cambio.usuario?.nombre || '---',
+        moneda_origen: cambio.monedaOrigen?.codigo || '---',
+        moneda_destino: cambio.monedaDestino?.codigo || '---',
+        monto_origen: Number(cambio.montoOrigen).toFixed(2),
+        tasa: Number(cambio.tasaCambio).toFixed(4),
+        monto_destino: Number(cambio.montoDestino).toFixed(2),
         observacion: cambio.observacion || null,
       },
     },

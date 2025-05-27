@@ -16,7 +16,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       punto_atencion_id: string
     }
 
-    const { total_entradas, total_salidas, saldo_final, observaciones } = req.body
+    const {
+      total_entradas,
+      total_salidas,
+      saldo_final,
+      observaciones,
+      razonParcial, // Nuevo campo
+    } = req.body
 
     if (
       total_entradas == null ||
@@ -29,9 +35,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const hoy = new Date()
     hoy.setHours(0, 0, 0, 0)
 
-    const yaCuadrado = await prisma.cuadres_caja.findFirst({
+    const yaCuadrado = await prisma.cuadreCaja.findFirst({
       where: {
-        usuario_id: decoded.userId,
+        usuarioId: decoded.userId,
         fecha: { gte: hoy },
       },
     })
@@ -40,19 +46,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Ya realizaste el cuadre de caja hoy' })
     }
 
-    await prisma.cuadres_caja.create({
+    await prisma.cuadreCaja.create({
       data: {
-        usuario_id: decoded.userId,
-        punto_atencion_id: decoded.punto_atencion_id,
-        fecha: hoy,
-        total_entradas,
-        total_salidas,
-        saldo_final,
+        usuarioId: decoded.userId,
+        puntoAtencionId: decoded.punto_atencion_id,
+        fecha: new Date(),
+        entradas: total_entradas,
+        salidas: total_salidas,
+        saldo: saldo_final,
         observaciones,
+        razonParcial: razonParcial || null,
       },
     })
 
-    return res.status(200).json({ mensaje: 'Cuadre de caja registrado correctamente' })
+    await prisma.usuario.update({
+      where: { id: decoded.userId },
+      data: { punto_atencion_id: null },
+    })
+
+    return res.status(200).json({ mensaje: 'Cuadre y liberación realizados con razón registrada' })
   } catch (err) {
     console.error(err)
     return res.status(500).json({ error: 'Error interno del servidor' })

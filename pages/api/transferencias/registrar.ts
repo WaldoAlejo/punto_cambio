@@ -1,11 +1,11 @@
-// ✅ pages/api/transferencias/registrar.ts
+// pages/api/transferencias/registrar.ts
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { parse } from 'cookie'
 import jwt from 'jsonwebtoken'
 import { prisma } from '@/lib/prisma'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') return res.status(405).end()
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' })
 
   const token = req.headers.cookie ? parse(req.headers.cookie).token : null
   if (!token) return res.status(401).json({ error: 'No autenticado' })
@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       punto_atencion_id: string
     }
 
-    const { hacia_punto_id, moneda_id, monto, observacion } = req.body
+    const { hacia_punto_id, moneda_id, monto, descripcion } = req.body
 
     if (!hacia_punto_id || !moneda_id || !monto || parseFloat(monto) <= 0) {
       return res.status(400).json({ error: 'Datos inválidos' })
@@ -26,61 +26,93 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'No puedes transferir a tu propio punto' })
     }
 
-    const saldo = await prisma.saldos.findFirst({
+    const montoDecimal = parseFloat(monto)
+
+    // Validar saldo suficiente
+    const saldoOrigen = await prisma.saldo.findUnique({
       where: {
-        punto_atencion_id: decoded.punto_atencion_id,
-        moneda_id,
+        puntoAtencionId_monedaId: {
+          puntoAtencionId: decoded.punto_atencion_id,
+          monedaId: moneda_id,
+        },
       },
     })
 
-    if (!saldo || saldo.cantidad === null || parseFloat(saldo.cantidad.toString()) < parseFloat(monto)) {
+    if (!saldoOrigen || saldoOrigen.cantidad < montoDecimal) {
       return res.status(400).json({ error: 'Saldo insuficiente' })
     }
 
-    const montoDecimal = parseFloat(monto)
-
     await prisma.$transaction([
-      prisma.movimientos.create({
+      // Registrar transferencia
+      prisma.transferencia.create({
         data: {
-          tipo: 'TRANSFERENCIA',
+          origenId: decoded.punto_atencion_id,
+          destinoId: hacia_punto_id,
+          monedaId: moneda_id,
           monto: montoDecimal,
-          moneda_id,
-          desde_punto: decoded.punto_atencion_id,
-          hacia_punto: hacia_punto_id,
-          generado_por: decoded.userId,
-          observacion,
+          descripcion,
         },
       }),
-      prisma.saldos.updateMany({
+
+      // Movimiento de salida en origen
+      prisma.movimiento.create({
+        data: {
+          tipo: 'TRANSFERENCIA_SALIENTE',
+          monto: montoDecimal,
+          monedaId: moneda_id,
+          usuarioId: decoded.userId,
+          puntoAtencionId: decoded.punto_atencion_id,
+          descripcion: `Transferencia a ${hacia_punto_id} - ${descripcion || ''}`,
+        },
+      }),
+
+      // Movimiento de entrada en destino
+      prisma.movimiento.create({
+        data: {
+          tipo: 'TRANSFERENCIA_ENTRANTE',
+          monto: montoDecimal,
+          monedaId: moneda_id,
+          usuarioId: decoded.userId,
+          puntoAtencionId: hacia_punto_id,
+          descripcion: `Transferencia recibida de ${decoded.punto_atencion_id} - ${descripcion || ''}`,
+        },
+      }),
+
+      // Restar del saldo origen
+      prisma.saldo.update({
         where: {
-          punto_atencion_id: decoded.punto_atencion_id,
-          moneda_id,
+          puntoAtencionId_monedaId: {
+            puntoAtencionId: decoded.punto_atencion_id,
+            monedaId: moneda_id,
+          },
         },
         data: {
           cantidad: { decrement: montoDecimal },
         },
       }),
-      prisma.saldos.upsert({
+
+      // Sumar al saldo destino
+      prisma.saldo.upsert({
         where: {
-          punto_atencion_id_moneda_id: {
-            punto_atencion_id: hacia_punto_id,
-            moneda_id,
+          puntoAtencionId_monedaId: {
+            puntoAtencionId: hacia_punto_id,
+            monedaId: moneda_id,
           },
         },
         update: {
           cantidad: { increment: montoDecimal },
         },
         create: {
-          punto_atencion_id: hacia_punto_id,
-          moneda_id,
+          puntoAtencionId: hacia_punto_id,
+          monedaId: moneda_id,
           cantidad: montoDecimal,
         },
       }),
     ])
 
-    return res.status(200).json({ mensaje: 'Transferencia realizada correctamente' })
+    return res.status(200).json({ mensaje: 'Transferencia registrada correctamente' })
   } catch (err) {
-    console.error(err)
+    console.error('Error al registrar transferencia:', err)
     return res.status(500).json({ error: 'Error al procesar la transferencia' })
   }
 }

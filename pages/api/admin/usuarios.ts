@@ -1,4 +1,3 @@
-// pages/api/admin/usuarios.ts
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
@@ -11,31 +10,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!admin) return res.status(403).json({ error: 'No autorizado' })
 
   const { nombre, usuario, correo, clave, rol, punto_atencion_id } = req.body
-  if (!nombre || !usuario || !correo || !clave || !rol) {
+
+  if (!nombre || !usuario || !clave || !rol) {
     return res.status(400).json({ error: 'Faltan campos obligatorios' })
   }
 
   const claveHasheada = await bcrypt.hash(clave, 10)
 
   try {
-    const nuevoUsuario = await prisma.usuarios.create({
+    const nuevoUsuario = await prisma.usuario.create({
       data: {
         nombre,
-        usuario,
-        correo,
-        clave: claveHasheada,
+        username: usuario,
+        password: claveHasheada,
         rol,
+        correo: correo || null,
         punto_atencion_id: punto_atencion_id || null,
       },
     })
 
-    return res.status(201).json({ mensaje: 'Usuario creado', usuario: nuevoUsuario })
+    return res.status(201).json({ mensaje: 'Usuario creado correctamente', usuario: nuevoUsuario })
   } catch (err: unknown) {
     if (err instanceof Error) {
-      console.error(err.message)
+      console.error('Error al crear usuario:', err.message)
     } else {
-      console.error('Error desconocido')
+      console.error('Error desconocido al crear usuario')
     }
-    return res.status(500).json({ error: 'Error al crear usuario' })
+
+    return res.status(500).json({ error: 'Error interno al crear usuario' })
   }
 }

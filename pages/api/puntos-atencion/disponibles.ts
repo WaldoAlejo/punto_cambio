@@ -7,7 +7,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // Obtener IDs de puntos ya ocupados por usuarios activos
-    const usuariosActivos = await prisma.usuarios.findMany({
+    const usuariosActivos = await prisma.usuario.findMany({
       where: {
         punto_atencion_id: { not: null },
       },
@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     )
 
     // Retornar puntos que NO estén ocupados
-    const disponibles = await prisma.puntos_atencion.findMany({
+    const disponibles = await prisma.puntoAtencion.findMany({
       where: {
         id: { notIn: ocupados.filter(Boolean) as string[] },
       },

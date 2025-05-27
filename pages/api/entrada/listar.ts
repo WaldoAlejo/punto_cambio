@@ -1,4 +1,4 @@
-// pages/api/transferencias/historial.ts
+// pages/api/entrada/listar.ts
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { prisma } from '@/lib/prisma'
 import { parse } from 'cookie'
@@ -12,36 +12,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+      id: string
       punto_atencion_id: string
     }
 
-    const transferencias = await prisma.transferencia.findMany({
+    const entradas = await prisma.movimiento.findMany({
       where: {
-        origenId: decoded.punto_atencion_id,
+        tipo: 'INGRESO',
+        puntoAtencionId: decoded.punto_atencion_id,
       },
-      orderBy: { fecha: 'desc' },
+      orderBy: {
+        fecha: 'desc',
+      },
       include: {
-        destino: {
-          select: { nombre: true },
-        },
         moneda: {
           select: { codigo: true },
         },
       },
     })
 
-    const resultado = transferencias.map((t) => ({
-      id: t.id,
-      monto: t.monto,
-      moneda: t.moneda.codigo,
-      destino: t.destino.nombre,
-      fecha: t.fecha,
-      descripcion: t.descripcion || '',
+    const formateadas = entradas.map((e) => ({
+      id: e.id,
+      fecha: e.fecha,
+      monto: e.monto,
+      descripcion: e.descripcion,
+      moneda: e.moneda,
     }))
 
-    return res.status(200).json(resultado)
+    res.status(200).json(formateadas)
   } catch (error) {
-    console.error('Error al obtener historial de transferencias:', error)
-    return res.status(500).json({ error: 'Error al obtener historial' })
+    console.error('Error al listar entradas:', error)
+    res.status(500).json({ error: 'Error interno del servidor' })
   }
 }

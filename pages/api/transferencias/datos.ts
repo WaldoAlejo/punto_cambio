@@ -5,7 +5,9 @@ import jwt from 'jsonwebtoken'
 import { parse } from 'cookie'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'GET') return res.status(405).end()
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Método no permitido' })
+  }
 
   const token = req.headers.cookie ? parse(req.headers.cookie).token : null
   if (!token) return res.status(401).json({ error: 'No autenticado' })
@@ -15,25 +17,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       punto_atencion_id: string
     }
 
-    const puntos = await prisma.puntos_atencion.findMany({
+    const puntos = await prisma.puntoAtencion.findMany({
       where: {
-        id: { not: decoded.punto_atencion_id },
+        id: {
+          not: decoded.punto_atencion_id,
+        },
+        activo: true,
       },
       select: {
         id: true,
         nombre: true,
       },
+      orderBy: {
+        nombre: 'asc',
+      },
     })
 
-    const monedas = await prisma.monedas.findMany({
+    const monedas = await prisma.moneda.findMany({
       select: {
         id: true,
         codigo: true,
       },
+      orderBy: {
+        codigo: 'asc',
+      },
     })
 
     return res.status(200).json({ puntos, monedas })
-  } catch {
-    return res.status(500).json({ error: 'Error al obtener datos' })
+  } catch (err) {
+    console.error('Error al obtener datos de transferencias:', err)
+    return res.status(500).json({ error: 'Error interno del servidor' })
   }
 }

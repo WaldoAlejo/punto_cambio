@@ -5,7 +5,9 @@ import jwt from 'jsonwebtoken'
 import { prisma } from '@/lib/prisma'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' })
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Método no permitido' })
+  }
 
   const cookies = req.headers.cookie
   const token = cookies ? parse(cookies).token : null
@@ -13,16 +15,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
-      userId: string
+      id: string
     }
 
     const hoy = new Date()
     hoy.setHours(0, 0, 0, 0)
 
-    const jornada = await prisma.jornadas.findFirst({
+    const jornada = await prisma.jornada.findFirst({
       where: {
-        usuario_id: decoded.userId,
-        fecha: { gte: hoy },
+        usuarioId: decoded.id,
+        fechaInicio: { gte: hoy },
       },
     })
 
@@ -30,18 +32,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: 'No hay jornada activa para hoy' })
     }
 
-    if (jornada.hora_fin) {
+    if (jornada.fechaSalida) {
       return res.status(400).json({ error: 'Ya registraste el fin de jornada' })
     }
 
-    await prisma.jornadas.update({
+    // 1. Registrar hora de salida
+    await prisma.jornada.update({
       where: { id: jornada.id },
-      data: { hora_fin: new Date() },
+      data: { fechaSalida: new Date() },
     })
 
-    return res.status(200).json({ mensaje: 'Fin de jornada registrado' })
+    // 2. Liberar el punto de atención
+    await prisma.usuario.update({
+      where: { id: decoded.id },
+      data: { punto_atencion_id: null },
+    })
+
+    return res.status(200).json({ mensaje: 'Fin de jornada registrado y punto liberado' })
   } catch (err) {
-    console.error(err)
+    console.error('Error en /api/jornada/fin:', err)
     return res.status(500).json({ error: 'Error al registrar fin de jornada' })
   }
 }

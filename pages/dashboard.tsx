@@ -1,151 +1,91 @@
-import { GetServerSideProps } from 'next'
-import { prisma } from '@/lib/prisma'
-import { obtenerUsuarioDesdeContext } from '@/lib/auth'
-import LogoutButton from '@/components/LogoutButton'
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/router'
 import Link from 'next/link'
-import { useEstadoJornada } from '@/hooks/useEstadoJornada'
-import { useCuadreCajaHoy } from '@/hooks/useCuadreCajaHoy'
 
-type Saldo = {
-  moneda: string
-  cantidad: number
+const menuOpciones = {
+  ADMIN: [
+    {
+      categoria: 'Punto Cambio',
+      opciones: [
+        { nombre: 'Usuarios', ruta: '/usuarios' },
+        { nombre: 'Puntos de Atención', ruta: '/puntos-atencion' },
+        { nombre: 'Asignar Saldo', ruta: '/asignar-saldo' },
+        { nombre: 'Informe de Saldos', ruta: '/informe-saldos' },
+        { nombre: 'Transferencias', ruta: '/admin/transferencias' },
+        { nombre: 'Jornada', ruta: '/admin/jornada' },
+        { nombre: 'Cierres', ruta: '/admin/cierres' },
+      ],
+    },
+    {
+      categoria: 'Servientrega',
+      opciones: [], // Por implementar
+    },
+  ],
+  OPERADOR: [
+    {
+      categoria: 'Punto Cambio',
+      opciones: [
+        { nombre: 'Divisas', ruta: '/nuevo-cambio' },
+        { nombre: 'Transferencias y Retiros', ruta: '/salidas' },
+        { nombre: 'Ingreso de Saldo', ruta: '/entradas' },
+        { nombre: 'Cierre de Caja', ruta: '/cuadre' },
+        { nombre: 'Jornada', ruta: '/jornada' },
+        { nombre: 'Cerrar Sesión', ruta: '/logout' },
+      ],
+    },
+    {
+      categoria: 'Servientrega',
+      opciones: [], // Por implementar
+    },
+  ],
 }
 
-type Props = {
-  usuario: {
-    userId: string
-    role: 'ADMIN' | 'EMPLEADO'
-    punto_atencion_id: string
-  }
-  saldos: Saldo[]
-}
+export default function DashboardLayout() {
+  const [rol, setRol] = useState<'ADMIN' | 'OPERADOR' | null>(null)
+  const [cargando, setCargando] = useState(true)
+  const router = useRouter()
 
-export default function DashboardPage({ usuario, saldos }: Props) {
-  const { estado, registrar, mensaje, error, loading } = useEstadoJornada()
-  const { cuadre, loading: cargandoCuadre } = useCuadreCajaHoy()
+  useEffect(() => {
+    // Obtener el rol desde la API del perfil
+    const fetchRol = async () => {
+      const res = await fetch('/api/perfil')
+      const data = await res.json()
+      if (!res.ok || !data.usuario) {
+        router.push('/login')
+        return
+      }
+      setRol(data.usuario.rol)
+      setCargando(false)
+    }
+    fetchRol()
+  }, [router])
 
-  const siguienteAccion = () => {
-    if (!estado.inicio) return 'inicio'
-    if (!estado.salida_almuerzo) return 'salida-almuerzo'
-    if (!estado.regreso_almuerzo) return 'regreso-almuerzo'
-    if (!estado.fin) return 'fin'
-    return null
-  }
-
-  const accion = siguienteAccion()
+  if (cargando) return <p style={{ padding: 20 }}>Cargando menú...</p>
 
   return (
-    <div style={{ padding: 40 }}>
-      <LogoutButton />
-      <h1>Dashboard</h1>
-      <p>ID: <strong>{usuario.userId}</strong></p>
-      <p>Rol: <strong>{usuario.role}</strong></p>
-
-      <h2 style={{ marginTop: 40 }}>💰 Saldos disponibles</h2>
-      {saldos.length === 0 ? (
-        <p>No hay saldos registrados</p>
-      ) : (
-        <ul>
-          {saldos.map((s: Saldo) => (
-            <li key={s.moneda}>
-              {s.moneda}: <strong>{s.cantidad.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <div style={{ marginTop: 50 }}>
-        <Link href="/nuevo-cambio">
-          <button style={{ padding: '10px 20px', fontSize: '16px' }}>
-            ➕ Nuevo cambio de divisas
-          </button>
-        </Link>
-      </div>
-
-      {/* Sección de control de jornada */}
-      <div style={{ marginTop: 60 }}>
-        <h2>🕒 Control de Jornada</h2>
-        <p><strong>Inicio:</strong> {estado.inicio || '—'}</p>
-        <p><strong>Salida almuerzo:</strong> {estado.salida_almuerzo || '—'}</p>
-        <p><strong>Regreso almuerzo:</strong> {estado.regreso_almuerzo || '—'}</p>
-        <p><strong>Fin jornada:</strong> {estado.fin || '—'}</p>
-
-        {accion ? (
-          <button
-            onClick={() => registrar(accion)}
-            disabled={loading || (accion === 'fin' && !cuadre)}
-            style={{ marginTop: 16 }}
-          >
-            Registrar {accion.replace('-', ' ')}
-          </button>
-        ) : (
-          <p style={{ marginTop: 16 }}>✅ Jornada completada</p>
-        )}
-
-        {accion === 'fin' && !cuadre && (
-          <p style={{ color: 'red', marginTop: 8 }}>
-            ⚠️ Debes realizar el cuadre de caja antes de finalizar la jornada.
-          </p>
-        )}
-
-        {mensaje && <p style={{ color: 'green' }}>{mensaje}</p>}
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-      </div>
-
-      {/* Sección de cuadre de caja */}
-      <div style={{ marginTop: 50 }}>
-        <h2>📊 Cuadre de Caja Diario</h2>
-        {cargandoCuadre ? (
-          <p>Cargando cuadre...</p>
-        ) : cuadre ? (
-          <div>
-            <p><strong>Entradas:</strong> {cuadre.entradas.toFixed(2)}</p>
-            <p><strong>Salidas:</strong> {cuadre.salidas.toFixed(2)}</p>
-            <p><strong>Saldo final:</strong> {cuadre.saldo.toFixed(2)}</p>
-            {cuadre.observaciones && <p><strong>Obs:</strong> {cuadre.observaciones}</p>}
-            <p style={{ color: 'green', marginTop: 8 }}>✅ Cuadre de caja registrado</p>
+    <div style={{ display: 'flex', height: '100vh' }}>
+      <aside style={{ width: 250, background: '#f0f0f0', padding: 20 }}>
+        <h2 style={{ marginBottom: 24 }}>Menú</h2>
+        {rol && menuOpciones[rol].map((bloque) => (
+          <div key={bloque.categoria} style={{ marginBottom: 24 }}>
+            <h4>{bloque.categoria}</h4>
+            <ul style={{ listStyle: 'none', paddingLeft: 0 }}>
+              {bloque.opciones.map((op) => (
+                <li key={op.ruta} style={{ marginTop: 8 }}>
+                  <Link href={op.ruta}>{op.nombre}</Link>
+                </li>
+              ))}
+            </ul>
           </div>
-        ) : (
-          <p style={{ color: 'red' }}>⚠️ Aún no has realizado el cuadre de caja hoy</p>
-        )}
-      </div>
+        ))}
+      </aside>
+
+      <main style={{ flexGrow: 1, padding: 40 }}>
+        <h1>Bienvenido al Panel</h1>
+        <p>Selecciona una opción del menú para comenzar.</p>
+      </main>
     </div>
   )
-}
-
-export const getServerSideProps: GetServerSideProps = async (ctx) => {
-  const usuario = obtenerUsuarioDesdeContext(ctx)
-
-  if (!usuario || !usuario.punto_atencion_id) {
-    return {
-      redirect: {
-        destination: '/login',
-        permanent: false,
-      },
-    }
-  }
-
-  const saldosDb = await prisma.saldos.findMany({
-    where: {
-      punto_atencion_id: usuario.punto_atencion_id,
-      cantidad: { gt: 0 },
-    },
-    include: {
-      monedas: true,
-    },
-  })
-
-  type SaldosWithMoneda = typeof saldosDb[number]
-
-  const saldos: Saldo[] = saldosDb.map((s: SaldosWithMoneda) => ({
-    moneda: s.monedas?.codigo || '---',
-    cantidad: parseFloat(s.cantidad?.toString() || '0'),
-  }))
-
-  return {
-    props: {
-      usuario,
-      saldos,
-    },
-  }
 }

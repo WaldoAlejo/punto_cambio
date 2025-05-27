@@ -1,4 +1,4 @@
-// ✅ pages/api/nuevo-cambio.ts
+// ✅ pages/api/nuevo-cambio.ts con actualización automática de saldo
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { prisma } from '@/lib/prisma'
 import { obtenerUsuarioDesdeRequest } from '@/lib/auth'
@@ -40,21 +40,74 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const montoDestino = tipoOperacion === 'COMPRA' ? monto * tasa : monto / tasa
 
   try {
-    const cambio = await prisma.cambios_divisas.create({
+    const cambio = await prisma.cambioDivisa.create({
       data: {
-        punto_atencion_id: usuario.punto_atencion_id,
-        usuario_id: usuario.userId,
-        tipo_operacion: tipoOperacion,
-        moneda_origen_id: monedaOrigen,
-        moneda_destino_id: monedaDestino,
-        monto_origen: monto,
-        tasa_cambio: tasa,
-        monto_destino: parseFloat(montoDestino.toFixed(2)),
+        puntoAtencionId: usuario.punto_atencion_id,
+        usuarioId: usuario.id,
+        tipoOperacion,
+        monedaOrigenId: monedaOrigen,
+        monedaDestinoId: monedaDestino,
+        montoOrigen: monto,
+        tasaCambio: tasa,
+        montoDestino: parseFloat(montoDestino.toFixed(2)),
         observacion,
       },
     })
 
-    return res.status(200).json({ mensaje: 'Cambio registrado correctamente', id: cambio.id })
+    // Movimiento por el monto origen
+    await prisma.movimiento.create({
+      data: {
+        tipo: 'CAMBIO_DIVISA',
+        monto,
+        monedaId: monedaOrigen,
+        usuarioId: usuario.id,
+        puntoAtencionId: usuario.punto_atencion_id,
+        descripcion: `Cambio de divisa (${tipoOperacion})`,
+      },
+    })
+
+    // Actualizar saldos
+    // 1. Restar del saldo origen
+    await prisma.saldo.upsert({
+      where: {
+        puntoAtencionId_monedaId: {
+          puntoAtencionId: usuario.punto_atencion_id,
+          monedaId: monedaOrigen,
+        },
+      },
+      update: {
+        cantidad: {
+          decrement: monto,
+        },
+      },
+      create: {
+        puntoAtencionId: usuario.punto_atencion_id,
+        monedaId: monedaOrigen,
+        cantidad: 0,
+      },
+    })
+
+    // 2. Sumar al saldo destino
+    await prisma.saldo.upsert({
+      where: {
+        puntoAtencionId_monedaId: {
+          puntoAtencionId: usuario.punto_atencion_id,
+          monedaId: monedaDestino,
+        },
+      },
+      update: {
+        cantidad: {
+          increment: parseFloat(montoDestino.toFixed(2)),
+        },
+      },
+      create: {
+        puntoAtencionId: usuario.punto_atencion_id,
+        monedaId: monedaDestino,
+        cantidad: parseFloat(montoDestino.toFixed(2)),
+      },
+    })
+
+    return res.status(200).json({ mensaje: 'Cambio y saldos actualizados correctamente', id: cambio.id })
   } catch (error) {
     console.error('Error al registrar cambio:', error)
     return res.status(500).json({ error: 'Error interno del servidor' })

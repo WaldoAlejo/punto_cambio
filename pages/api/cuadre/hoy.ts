@@ -1,4 +1,3 @@
-// pages/api/cuadre/hoy.ts
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { prisma } from '@/lib/prisma'
 import { parse } from 'cookie'
@@ -12,28 +11,58 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
-      userId: string
+      id: string
     }
+
+    const userId = decoded.id
 
     const hoy = new Date()
     hoy.setHours(0, 0, 0, 0)
 
-    const cuadre = await prisma.cuadres_caja.findFirst({
+    // 1. Obtener último cuadre anterior al día de hoy
+    const cuadreAnterior = await prisma.cuadreCaja.findFirst({
       where: {
-        usuario_id: decoded.userId,
+        usuarioId: userId,
+        fecha: { lt: hoy },
+      },
+      orderBy: { fecha: 'desc' },
+    })
+
+    const saldo_anterior = cuadreAnterior?.saldo ?? 0
+
+    // 2. Obtener sumatoria de entradas y salidas de hoy
+    const movimientos = await prisma.movimiento.findMany({
+      where: {
+        usuarioId: userId,
         fecha: { gte: hoy },
       },
     })
 
-    if (!cuadre) return res.status(200).json(null)
+    const entradas = movimientos
+      .filter((m) => m.tipo === 'INGRESO' || m.tipo === 'TRANSFERENCIA_ENTRANTE')
+      .reduce((acc, m) => acc + m.monto, 0)
+
+    const salidas = movimientos
+      .filter((m) => m.tipo === 'EGRESO' || m.tipo === 'TRANSFERENCIA_SALIENTE')
+      .reduce((acc, m) => acc + m.monto, 0)
+
+    const cuadre = await prisma.cuadreCaja.findFirst({
+      where: {
+        usuarioId: userId,
+        fecha: { gte: hoy },
+      },
+    })
 
     return res.status(200).json({
-      entradas: cuadre.total_entradas,
-      salidas: cuadre.total_salidas,
-      saldo: cuadre.saldo_final,
-      observaciones: cuadre.observaciones || '',
+      saldo_anterior,
+      entradas,
+      salidas,
+      saldo: saldo_anterior + entradas - salidas,
+      observaciones: cuadre?.observaciones ?? '',
+      razonParcial: cuadre?.razonParcial ?? null,
     })
-  } catch {
+  } catch (err) {
+    console.error('Error en /api/cuadre/hoy:', err)
     return res.status(500).json({ error: 'Error al consultar cuadre' })
   }
 }

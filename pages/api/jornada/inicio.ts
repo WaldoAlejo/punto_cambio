@@ -13,20 +13,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
-      userId: string
+      id: string
       punto_atencion_id: string
     }
 
-    const { userId, punto_atencion_id } = decoded
+    const { id: userId, punto_atencion_id } = decoded
 
     // Evitar duplicados por día
     const hoy = new Date()
     hoy.setHours(0, 0, 0, 0)
 
-    const existente = await prisma.jornadas.findFirst({
+    const existente = await prisma.jornada.findFirst({
       where: {
-        usuario_id: userId,
-        fecha: { gte: hoy },
+        usuarioId: userId,
+        fechaInicio: { gte: hoy },
       },
     })
 
@@ -34,17 +34,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Ya iniciaste jornada hoy' })
     }
 
-    await prisma.jornadas.create({
+    await prisma.jornada.create({
       data: {
-        usuario_id: userId,
-        punto_atencion_id,
-        hora_inicio: new Date(),
+        usuarioId: userId,
+        puntoAtencionId: punto_atencion_id,
+        fechaInicio: new Date(),
       },
     })
 
     return res.status(200).json({ mensaje: 'Jornada iniciada' })
   } catch (err) {
-    console.error(err)
+    console.error('Error en /api/jornada/inicio:', err)
     return res.status(500).json({ error: 'Error al iniciar jornada' })
   }
 }

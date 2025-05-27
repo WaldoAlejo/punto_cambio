@@ -8,11 +8,15 @@
     "start": "next start",
     "lint": "next lint"
   },
+  "prisma": {
+    "seed": "ts-node --project tsconfig.seed.json prisma/seed.ts"
+  },
   "dependencies": {
     "@prisma/client": "^6.8.2",
     "bcryptjs": "^3.0.2",
     "cookie": "^1.0.2",
     "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
     "jsonwebtoken": "^9.0.2",
     "next": "15.3.2",
     "prisma": "^6.8.2",
@@ -33,6 +37,7 @@
     "eslint-config-next": "15.3.2",
     "eslint-plugin-import": "^2.31.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
   }
 }

@@ -8,16 +8,21 @@ datasource db {
 }
 
 model Usuario {
-  id           String         @id @default(uuid())
-  username     String         @unique
-  password     String
-  rol          RolUsuario
-  nombre       String
-  activo       Boolean        @default(true)
+  id                 String         @id @default(uuid())
+  username           String         @unique
+  password           String
+  rol                RolUsuario
+  nombre             String
+  activo             Boolean        @default(true)
+  punto_atencion_id  String?
+  correo             String?        @unique
+  puntoAtencion      PuntoAtencion? @relation(fields: [punto_atencion_id], references: [id])
+
   jornadas     Jornada[]
   cambios      CambioDivisa[]
   movimientos  Movimiento[]
   solicitudes  SolicitudSaldo[]
+  cuadresCaja  CuadreCaja[]
 }
 
 model PuntoAtencion {
@@ -29,42 +34,49 @@ model PuntoAtencion {
   codigoPostal String
   activo       Boolean        @default(true)
 
-  saldos       Saldo[]
-  jornadas     Jornada[]
-  cambios      CambioDivisa[]
-  movimientos  Movimiento[]
-  solicitudes  SolicitudSaldo[]
-  origenTransf Transferencia[] @relation("TransferenciasOrigen")
-  destinoTransf Transferencia[] @relation("TransferenciasDestino")
+  usuarios       Usuario[]
+  saldos         Saldo[]
+  jornadas       Jornada[]
+  cambios        CambioDivisa[]
+  movimientos    Movimiento[]
+  solicitudes    SolicitudSaldo[]
+  origenTransf   Transferencia[] @relation("TransferenciasOrigen")
+  destinoTransf  Transferencia[] @relation("TransferenciasDestino")
+  cuadresCaja    CuadreCaja[]
 }
 
 model Moneda {
-  id       String        @id @default(uuid())
-  nombre   String
-  simbolo  String
-  codigo   String        @unique
-  saldos   Saldo[]
-  cambiosOrigen CambioDivisa[] @relation("MonedaOrigen")
-  cambiosDestino CambioDivisa[] @relation("MonedaDestino")
-  movimientos Movimiento[]
+  id              String           @id @default(uuid())
+  nombre          String
+  simbolo         String
+  codigo          String           @unique
+
+  saldos          Saldo[]
+  cambiosOrigen   CambioDivisa[]   @relation("MonedaOrigen")
+  cambiosDestino  CambioDivisa[]   @relation("MonedaDestino")
+  movimientos     Movimiento[]
+  solicitudes     SolicitudSaldo[]
+  transferencias  Transferencia[]
 }
 
 model CambioDivisa {
-  id                String    @id @default(uuid())
-  fecha             DateTime  @default(now())
+  id                String         @id @default(uuid())
+  fecha             DateTime       @default(now())
   montoOrigen       Float
   montoDestino      Float
   tasaCambio        Float
+  tipoOperacion     TipoOperacion   // <-- Agregado
   monedaOrigenId    String
   monedaDestinoId   String
   usuarioId         String
   puntoAtencionId   String
+  observacion       String?
   recibo            Recibo?
 
-  monedaOrigen      Moneda    @relation("MonedaOrigen", fields: [monedaOrigenId], references: [id])
-  monedaDestino     Moneda    @relation("MonedaDestino", fields: [monedaDestinoId], references: [id])
-  usuario           Usuario   @relation(fields: [usuarioId], references: [id])
-  puntoAtencion     PuntoAtencion @relation(fields: [puntoAtencionId], references: [id])
+  monedaOrigen      Moneda         @relation("MonedaOrigen", fields: [monedaOrigenId], references: [id])
+  monedaDestino     Moneda         @relation("MonedaDestino", fields: [monedaDestinoId], references: [id])
+  usuario           Usuario        @relation(fields: [usuarioId], references: [id])
+  puntoAtencion     PuntoAtencion  @relation(fields: [puntoAtencionId], references: [id])
 }
 
 model Recibo {
@@ -84,6 +96,8 @@ model Saldo {
 
   puntoAtencion   PuntoAtencion @relation(fields: [puntoAtencionId], references: [id])
   moneda          Moneda        @relation(fields: [monedaId], references: [id])
+
+  @@unique([puntoAtencionId, monedaId])
 }
 
 model Movimiento {
@@ -129,6 +143,21 @@ model Jornada {
   puntoAtencion   PuntoAtencion @relation(fields: [puntoAtencionId], references: [id])
 }
 
+model CuadreCaja {
+  id              String        @id @default(uuid())
+  usuarioId       String
+  puntoAtencionId String
+  fecha           DateTime      @default(now())
+  entradas        Float?
+  salidas         Float?
+  saldo           Float?
+  observaciones   String?
+  razonParcial    String? 
+
+  usuario         Usuario       @relation(fields: [usuarioId], references: [id])
+  puntoAtencion   PuntoAtencion @relation(fields: [puntoAtencionId], references: [id])
+}
+
 model Transferencia {
   id                  String        @id @default(uuid())
   origenId            String
@@ -154,4 +183,9 @@ enum TipoMovimiento {
   TRANSFERENCIA_ENTRANTE
   TRANSFERENCIA_SALIENTE
   CAMBIO_DIVISA
+}
+
+enum TipoOperacion {
+  COMPRA
+  VENTA
 }

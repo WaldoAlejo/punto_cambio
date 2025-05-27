@@ -13,16 +13,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
-      userId: string
+      id: string
     }
 
     const hoy = new Date()
     hoy.setHours(0, 0, 0, 0)
 
-    const jornada = await prisma.jornadas.findFirst({
+    const jornada = await prisma.jornada.findFirst({
       where: {
-        usuario_id: decoded.userId,
-        fecha: { gte: hoy },
+        usuarioId: decoded.id,
+        fechaInicio: { gte: hoy },
       },
     })
 
@@ -30,18 +30,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: 'No hay jornada activa para hoy' })
     }
 
-    if (jornada.hora_salida_almuerzo) {
+    if (jornada.fechaAlmuerzo) {
       return res.status(400).json({ error: 'Ya registraste la salida a almuerzo' })
     }
 
-    await prisma.jornadas.update({
+    await prisma.jornada.update({
       where: { id: jornada.id },
-      data: { hora_salida_almuerzo: new Date() },
+      data: { fechaAlmuerzo: new Date() },
     })
 
     return res.status(200).json({ mensaje: 'Salida a almuerzo registrada' })
   } catch (err) {
-    console.error(err)
+    console.error('Error en /api/jornada/salida-almuerzo:', err)
     return res.status(500).json({ error: 'Error al registrar salida a almuerzo' })
   }
 }

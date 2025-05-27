@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react'
 import { useRouter } from 'next/router'
 
@@ -5,6 +7,7 @@ export default function LoginPage() {
   const router = useRouter()
   const [usuario, setUsuario] = useState('')
   const [clave, setClave] = useState('')
+  const [mostrarClave, setMostrarClave] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -26,16 +29,14 @@ export default function LoginPage() {
 
       if (!res.ok) {
         setError(data.error || 'Error desconocido')
-      } else {
-        // redirigir al home o dashboard
-        const perfil = await fetch('/api/perfil')
-        const dataPerfil = await perfil.json()
+        return
+      }
 
-        if (!dataPerfil.usuario?.punto_atencion_id) {
-          router.push('/seleccionar-punto')
-        } else {
-          router.push('/dashboard')
-        }
+      const { user } = data
+      if (!user?.punto_atencion_id) {
+        router.push('/seleccionar-punto')
+      } else {
+        router.push('/dashboard')
       }
     } catch {
       setError('Error de red o del servidor')
@@ -58,20 +59,37 @@ export default function LoginPage() {
           />
         </label>
         <br />
+
         <label>
           Contraseña:
-          <input
-            type="password"
-            value={clave}
-            onChange={(e) => setClave(e.target.value)}
-            required
-          />
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <input
+              type={mostrarClave ? 'text' : 'password'}
+              value={clave}
+              onChange={(e) => setClave(e.target.value)}
+              required
+              style={{ flex: 1 }}
+            />
+            <button
+              type="button"
+              onClick={() => setMostrarClave(!mostrarClave)}
+              style={{
+                marginLeft: 8,
+                padding: '2px 6px',
+                fontSize: 12,
+              }}
+            >
+              {mostrarClave ? 'Ocultar' : 'Ver'}
+            </button>
+          </div>
         </label>
         <br />
+
         <button type="submit" disabled={loading}>
           {loading ? 'Ingresando...' : 'Ingresar'}
         </button>
-        {error && <p style={{ color: 'red' }}>{error}</p>}
+
+        {error && <p style={{ color: 'red', marginTop: 10 }}>{error}</p>}
       </form>
     </div>
   )

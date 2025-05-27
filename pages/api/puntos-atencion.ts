@@ -1,4 +1,3 @@
-// pages/api/puntos-atencion.ts
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { prisma } from '@/lib/prisma'
 
@@ -8,7 +7,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const puntos = await prisma.puntos_atencion.findMany({
+    const puntos = await prisma.puntoAtencion.findMany({
       select: {
         id: true,
         nombre: true,
@@ -18,8 +17,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
 
     return res.status(200).json(puntos)
-  } catch (error) {
-    console.error(error)
+  } catch (error: unknown) {
+    console.error('Error al obtener puntos de atención:', error)
     return res.status(500).json({ error: 'Error al obtener puntos de atención' })
   }
 }

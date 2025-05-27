@@ -6,6 +6,7 @@ export default function CuadreCajaPage() {
   const [salidas, setSalidas] = useState('')
   const [saldoFinal, setSaldoFinal] = useState('')
   const [observaciones, setObservaciones] = useState('')
+  const [razonParcial, setRazonParcial] = useState('') // ✅ Campo adicional
   const [mensaje, setMensaje] = useState('')
   const [error, setError] = useState('')
   const router = useRouter()
@@ -23,6 +24,7 @@ export default function CuadreCajaPage() {
         total_salidas: parseFloat(salidas),
         saldo_final: parseFloat(saldoFinal),
         observaciones,
+        razonParcial: razonParcial || null,
       }),
     })
 
@@ -40,16 +42,45 @@ export default function CuadreCajaPage() {
       <h2>🧾 Cuadre de Caja Diario</h2>
       <form onSubmit={handleSubmit}>
         <label>Total Entradas:</label>
-        <input type="number" value={entradas} onChange={(e) => setEntradas(e.target.value)} required step="0.01" />
+        <input
+          type="number"
+          value={entradas}
+          onChange={(e) => setEntradas(e.target.value)}
+          required
+          step="0.01"
+        />
 
         <label>Total Salidas:</label>
-        <input type="number" value={salidas} onChange={(e) => setSalidas(e.target.value)} required step="0.01" />
+        <input
+          type="number"
+          value={salidas}
+          onChange={(e) => setSalidas(e.target.value)}
+          required
+          step="0.01"
+        />
 
         <label>Saldo Final:</label>
-        <input type="number" value={saldoFinal} onChange={(e) => setSaldoFinal(e.target.value)} required step="0.01" />
+        <input
+          type="number"
+          value={saldoFinal}
+          onChange={(e) => setSaldoFinal(e.target.value)}
+          required
+          step="0.01"
+        />
 
         <label>Observaciones (opcional):</label>
-        <textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} />
+        <textarea
+          value={observaciones}
+          onChange={(e) => setObservaciones(e.target.value)}
+        />
+
+        <label>Razón de cuadre parcial (opcional):</label>
+        <input
+          type="text"
+          placeholder="Ej: Cambio de turno, salida anticipada..."
+          value={razonParcial}
+          onChange={(e) => setRazonParcial(e.target.value)}
+        />
 
         <button type="submit" style={{ marginTop: 16 }}>Registrar Cuadre</button>
       </form>

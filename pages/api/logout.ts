@@ -2,13 +2,17 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { serialize } from 'cookie'
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Elimina la cookie del token
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Método no permitido' })
+  }
+
+  // Eliminar la cookie del token
   res.setHeader(
     'Set-Cookie',
     serialize('token', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax',
       expires: new Date(0),
       path: '/',
     })
