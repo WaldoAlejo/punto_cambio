@@ -33,11 +33,13 @@ export default function LoginPage() {
       }
 
       const { user } = data
-      if (!user?.punto_atencion_id) {
-        router.push('/seleccionar-punto')
-      } else {
-        router.push('/dashboard')
-      }
+      if (user.rol === 'ADMIN') {
+  router.push('/dashboard')
+} else if (!user.punto_atencion_id) {
+  router.push('/seleccionar-punto')
+} else {
+  router.push('/dashboard')
+}
     } catch {
       setError('Error de red o del servidor')
     } finally {
