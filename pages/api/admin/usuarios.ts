@@ -1,42 +1,40 @@
+// pages/api/admin/usuarios.ts
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
-import { verificarAdmin } from '@/utils/verificar-admin'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const admin = verificarAdmin(req)
-  if (!admin) return res.status(403).json({ error: 'No autorizado' })
-
   const { nombre, usuario, correo, clave, rol, punto_atencion_id } = req.body
 
-  if (!nombre || !usuario || !clave || !rol) {
-    return res.status(400).json({ error: 'Faltan campos obligatorios' })
-  }
-
-  const claveHasheada = await bcrypt.hash(clave, 10)
-
   try {
+    // Verificar si ya existe el usuario
+    const existente = await prisma.usuario.findUnique({
+      where: { username: usuario },
+    })
+
+    if (existente) {
+      return res.status(400).json({ error: 'El usuario ya existe' })
+    }
+
+    // Encriptar la contraseña antes de guardar
+    const passwordHasheado = await bcrypt.hash(clave, 10)
+
     const nuevoUsuario = await prisma.usuario.create({
       data: {
         nombre,
         username: usuario,
-        password: claveHasheada,
+        correo,
+        password: passwordHasheado,
         rol,
-        correo: correo || null,
         punto_atencion_id: punto_atencion_id || null,
       },
     })
 
-    return res.status(201).json({ mensaje: 'Usuario creado correctamente', usuario: nuevoUsuario })
-  } catch (err: unknown) {
-    if (err instanceof Error) {
-      console.error('Error al crear usuario:', err.message)
-    } else {
-      console.error('Error desconocido al crear usuario')
-    }
-
-    return res.status(500).json({ error: 'Error interno al crear usuario' })
+    return res.status(201).json({ mensaje: 'Usuario creado', usuario: nuevoUsuario })
+  } catch (error) {
+    console.error('Error creando usuario:', error)
+    return res.status(500).json({ error: 'Error interno del servidor' })
   }
 }
