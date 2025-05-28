@@ -27,7 +27,7 @@ export default function ModalCrearPunto({ onClose, onSave }: Props) {
     setError('')
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/puntos-atencion', {
+      const res = await fetch('/api/puntos-atencion/crear', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -41,7 +41,7 @@ export default function ModalCrearPunto({ onClose, onSave }: Props) {
         onClose()
       }
     } catch (err) {
-      console.error('Error al crear punto:', err)
+      console.error('❌ Error al crear punto:', err)
       setError('Error de red')
     } finally {
       setLoading(false)
